@@ -1,0 +1,7 @@
+target/
+.idea/
+project/target/*
+*.iml
+api/src/test/resources/sync/
+api/src/test/resources/classification_result/
+**/.DS_Store%  
