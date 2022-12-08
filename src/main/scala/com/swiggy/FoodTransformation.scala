@@ -49,8 +49,7 @@ object FoodTransformation {
     val deltaTable = DeltaTable.forPath(targetPath)
     deltaTable
       .as("t")
-      .merge(transformedDf.as("s"),
-        s"s.$primaryKey = t.$primaryKey and t.dt >= current_date() - 3")
+      .merge(transformedDf.as("s"),s"s.$primaryKey = t.$primaryKey")
       .whenMatched()
       .updateAll()
       .whenNotMatched()
