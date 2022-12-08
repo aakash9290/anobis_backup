@@ -8,4 +8,5 @@ lazy val root = (project in file("."))
   )
 
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.3.1"
-
+libraryDependencies += "org.rogach" %% "scallop" % "3.1.2"
+libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.30"
