@@ -7,9 +7,8 @@ import java.time.{Clock, LocalDateTime}
 
 object SimpleApplication extends App{
   val sparkConfigUtil = SparkConfigUtil(args)
-  val logFile = "README.md" // Should be some file on your system
 
-  val spark = if("PRODUCTION".equalsIgnoreCase(sparkConfigUtil.getDeploymentEnvironment.get.get)){
+  val spark = if("PRODUCTION".equalsIgnoreCase(sparkConfigUtil.getDeploymentEnvironment())){
     SparkSession.builder.appName("Simple Application").getOrCreate()
   }else{
     SparkSession.builder.appName("Simple Application").master("local[*]").getOrCreate()
@@ -17,8 +16,8 @@ object SimpleApplication extends App{
 
   val database = "swiggy_order_management"
   val table = "swiggy_orders"
-  val user = sparkConfigUtil.getUserName.get.get
-  val password = sparkConfigUtil.getPassword.get.get
+  val user = sparkConfigUtil.getUserName()
+  val password = sparkConfigUtil.getPassword()
   val portNumber = "3306"
   val connString = "jdbc:mysql://localhost:" + portNumber + "/" + database
 
@@ -34,12 +33,12 @@ object SimpleApplication extends App{
     .option("user", user)
     .option("password", password)
     //Use filter by specifying filter in dbtable option
-    .option("dbtable", s"(SELECT * FROM ${table} WHERE created_on >= '${fromTime}' and created_on < '${toTime}') as swiggy_orders_t")
+    .option("dbtable", s"(SELECT * FROM ${table} WHERE created_on >= '${fromTime}' and created_on < '${toTime}') as src_db")
     .option("partitionColumn", "created_on")
     .option("lowerBound", fromTime)
     .option("upperBound", toTime)
     .option("numPartitions", "1")
     .load()
 
-  //jdbcDF.show()
+//  jdbcDF.show()
 }
