@@ -51,11 +51,9 @@ object FoodTransformation {
       .as("t")
       .merge(transformedDf.as("s"),
         s"s.$primaryKey = t.$primaryKey and t.dt >= current_date() - 3")
-      .whenMatched(s"s.Op = 'D'")
-      .delete()
       .whenMatched()
       .updateAll()
-      .whenNotMatched(s"s.Op != 'D'")
+      .whenNotMatched()
       .insertAll()
       .execute()
   }

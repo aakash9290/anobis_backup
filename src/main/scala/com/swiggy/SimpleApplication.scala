@@ -60,40 +60,6 @@ object SimpleApplication extends App{
   if("swiggy_orders".equalsIgnoreCase(tableName)) {
     FoodTransformation.process(jdbcDF, 0)(spark)
   } else {
-    def getGmvTotal(event:String)={
-      Try{
-        (Json.parse(event) \\ "bill").map(x=> {
-          val itemBasePrice = Try {
-            x \ "itemBasePrice"
-          } match {
-            case Failure(ex) =>
-              0.0
-            case Success(value) => value match {
-              case _: JsDefined => value.as[Float]
-              case _: JsUndefined => 0.0
-            }
-          }
-          val quantity = Try {
-            x \ "quantity"
-          } match {
-            case Failure(ex) =>
-              0.0
-            case Success(value) => value match {
-              case _: JsDefined => value.as[Float]
-              case _: JsUndefined => 0.0
-            }
-          }
-          itemBasePrice*quantity
-        }).sum
-      } match {
-        case Success(v) => v
-        case Failure(ex) => 0.0
-      }
-    }
-
-    val gmvUdf = udf(getGmvTotal _)
-    spark.udf.register("gmvUdf", gmvUdf)
-
     InstamartTransformation.process(jdbcDF, 0)(spark)
   }
 }
