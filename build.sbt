@@ -20,7 +20,7 @@ val assemblyMerge = assemblyMergeStrategy in assembly := {
   case _ => MergeStrategy.first
 }
 
-libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.3.1"
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "3.2.1"
 libraryDependencies += "org.rogach" %% "scallop" % "3.1.2"
 libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.30"
 libraryDependencies += "io.delta" %% "delta-core" % "1.1.0"

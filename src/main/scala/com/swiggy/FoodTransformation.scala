@@ -6,8 +6,7 @@ import org.apache.spark.sql._
 
 object FoodTransformation {
 
-  def process(sourceDf: DataFrame, id: Long)(
-    implicit spark: SparkSession):Unit = {
+  def process(sourceDf: DataFrame, id: Long):Unit = {
 
     // We may get multiple entries for any ID so below code would give us latest entry
     sourceDf.createOrReplaceTempView("sourceDf")
@@ -47,6 +46,7 @@ object FoodTransformation {
     val targetPath = sparkConfigUtil.getTargetPath.get.get
 
     val deltaTable = DeltaTable.forPath(targetPath)
+
     deltaTable
       .as("t")
       .merge(transformedDf.as("s"),s"s.$primaryKey = t.$primaryKey")

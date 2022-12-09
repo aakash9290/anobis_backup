@@ -27,6 +27,7 @@ object SimpleApplication extends App{
   val password = sparkConfigUtil.getPassword.get.get
   val databaseName = sparkConfigUtil.getDatabaseName.get.get
   val tableName = sparkConfigUtil.getTableName.get.get
+  val targetPath = sparkConfigUtil.getTargetPath.get.get
 
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
@@ -37,9 +38,9 @@ object SimpleApplication extends App{
   println(s"SELECT * FROM ${tableName} WHERE created_on >= '${fromTime}' and created_on < '${toTime}'")
 
   val spark = if("PRODUCTION".equalsIgnoreCase(deploymentEnv)){
-    SparkSession.builder.appName("Simple Application").getOrCreate()
+    SparkSession.builder.appName("Simple Application").config("spark.databricks.delta.schema.autoMerge.enabled", true).getOrCreate()
   }else{
-    SparkSession.builder.appName("Simple Application").master("local[*]").getOrCreate()
+    SparkSession.builder.appName("Simple Application").config("spark.databricks.delta.schema.autoMerge.enabled", true).master("local[*]").getOrCreate()
   }
 
   val jdbcDF = spark.read.format("jdbc")
@@ -58,7 +59,8 @@ object SimpleApplication extends App{
   jdbcDF.show()
 
   if("swiggy_orders".equalsIgnoreCase(tableName)) {
-    FoodTransformation.process(jdbcDF, 0)(spark)
+    import org.apache.spark.sql.streaming.{OutputMode, Trigger}
+    FoodTransformation.process(jdbcDF, 0)
   } else {
     InstamartTransformation.process(jdbcDF, 0)(spark)
   }
