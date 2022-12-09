@@ -57,16 +57,16 @@ object InstamartTransformation {
                                                     from_utc_timestamp(updated_at, 'Asia/Kolkata') as updated_at_ist,
                                                     from_utc_timestamp(created_at, 'Asia/Kolkata') as created_at_ist,
                                                     unix_timestamp(from_utc_timestamp(updated_at, 'Asia/Kolkata'))*1000 as updated_at_ist_epoch,
-                                                    metadata:type as dp_order_type,
-                                                    metadata:storeId as store_id,
-                                                    metadata:deliveryType as delivery_type,
-                                                    case when metadata:deliveryType ="SLOTTED" then
-                                                    concat(extract(hour from from_utc_timestamp (from_unixtime(metadata:deliveryDetails:startTime), 'Asia/Kolkata') ),'-',
-                                                    extract(hour from from_utc_timestamp (from_unixtime(metadata:deliveryDetails:endTime), 'Asia/Kolkata')))  else null
+                                                    get_json_object(metadata, '$.type') as dp_order_type,
+                                                    get_json_object(metadata, '$.storeId') as store_id,
+                                                    get_json_object(metadata, '$.deliveryType') as delivery_type,
+                                                    case when get_json_object(metadata, '$.deliveryType') ="SLOTTED" then
+                                                    concat(extract(hour from from_utc_timestamp (from_unixtime(get_json_object(metadata, '$.deliveryDetails.startTime')), 'Asia/Kolkata') ),'-',
+                                                    extract(hour from from_utc_timestamp (from_unixtime(get_json_object(metadata, '$.deliveryDetails.endTime')), 'Asia/Kolkata')))  else null
                                                     end as delivery_slot,
-                                                    metadata:storeInfo:cityId as city,
-                                                    metadata:storeInfo:areaId as zone,
-                                                    gmvUdf(metadata:bill:billedItems) as gmv,
+                                                    get_json_object(metadata, '$.storeInfo.cityId') as city,
+                                                    get_json_object(metadata, '$.storeInfo.areaId') as zone,
+                                                    gmvUdf(get_json_object(metadata, '$.bill.billedItems')) as gmv,
                                                     unix_timestamp() as  processing_time
                                                     from dedupedDf """)
 

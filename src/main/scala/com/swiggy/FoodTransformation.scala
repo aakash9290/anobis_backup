@@ -6,7 +6,8 @@ import org.apache.spark.sql._
 
 object FoodTransformation {
 
-  def process(sourceDf: DataFrame, id: Long):Unit = {
+  def process(sourceDf: DataFrame, id: Long)(
+    implicit spark: SparkSession):Unit = {
 
     // We may get multiple entries for any ID so below code would give us latest entry
     sourceDf.createOrReplaceTempView("sourceDf")
