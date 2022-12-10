@@ -6,13 +6,18 @@ import org.apache.spark.sql._
 
 object FoodTransformation {
 
-  def process(sourceDf: DataFrame, id: Long)(
-    implicit spark: SparkSession):Unit = {
+  def process(sourceDf: DataFrame, id: Long)(implicit
+      spark: SparkSession
+  ): Unit = {
 
     // We may get multiple entries for any ID so below code would give us latest entry
     sourceDf.createOrReplaceTempView("sourceDf")
 
-    val dedupedDf = sourceDf.sparkSession.sql("select * from (select *, ROW_NUMBER() OVER (Partition By id Order By updated_on desc) as rn  from sourceDf) t1 where rn = 1").drop("rn")
+    val dedupedDf = sourceDf.sparkSession
+      .sql(
+        "select * from (select *, ROW_NUMBER() OVER (Partition By id Order By updated_on desc) as rn  from sourceDf) t1 where rn = 1"
+      )
+      .drop("rn")
 
     dedupedDf.createOrReplaceTempView("dedupedDf")
 
@@ -50,7 +55,7 @@ object FoodTransformation {
 
     deltaTable
       .as("t")
-      .merge(transformedDf.as("s"),s"s.$primaryKey = t.$primaryKey")
+      .merge(transformedDf.as("s"), s"s.$primaryKey = t.$primaryKey")
       .whenMatched()
       .updateAll()
       .whenNotMatched()

@@ -11,36 +11,41 @@ import scala.util.{Failure, Success, Try}
 //Not tested code
 object InstamartTransformation {
 
-  def process(sourceDf: DataFrame, id: Long)(
-    implicit spark: SparkSession):Unit = {
+  def process(sourceDf: DataFrame, id: Long)(implicit
+      spark: SparkSession
+  ): Unit = {
 
-    def getGmvTotal(event:String)={
-      Try{
-        (Json.parse(event) \\ "bill").map(x=> {
-          val itemBasePrice = Try {
-            x \ "itemBasePrice"
-          } match {
-            case Failure(ex) =>
-              0.0
-            case Success(value) => value match {
-              case _: JsDefined => value.as[Float]
-              case _: JsUndefined => 0.0
+    def getGmvTotal(event: String) = {
+      Try {
+        (Json.parse(event) \\ "bill")
+          .map(x => {
+            val itemBasePrice = Try {
+              x \ "itemBasePrice"
+            } match {
+              case Failure(ex) =>
+                0.0
+              case Success(value) =>
+                value match {
+                  case _: JsDefined   => value.as[Float]
+                  case _: JsUndefined => 0.0
+                }
             }
-          }
-          val quantity = Try {
-            x \ "quantity"
-          } match {
-            case Failure(ex) =>
-              0.0
-            case Success(value) => value match {
-              case _: JsDefined => value.as[Float]
-              case _: JsUndefined => 0.0
+            val quantity = Try {
+              x \ "quantity"
+            } match {
+              case Failure(ex) =>
+                0.0
+              case Success(value) =>
+                value match {
+                  case _: JsDefined   => value.as[Float]
+                  case _: JsUndefined => 0.0
+                }
             }
-          }
-          itemBasePrice*quantity
-        }).sum
+            itemBasePrice * quantity
+          })
+          .sum
       } match {
-        case Success(v) => v
+        case Success(v)  => v
         case Failure(ex) => 0.0
       }
     }
@@ -48,9 +53,12 @@ object InstamartTransformation {
     val gmvUdf = udf(getGmvTotal _)
     spark.udf.register("gmvUdf", gmvUdf)
 
-
     sourceDf.createOrReplaceTempView("sourceDf")
-    val dedupedDf = sourceDf.sparkSession.sql("select * from (select *, ROW_NUMBER() OVER (Partition By id Order By updated_at desc) as rn from sourceDf) t1 where rn = 1").drop("rn")
+    val dedupedDf = sourceDf.sparkSession
+      .sql(
+        "select * from (select *, ROW_NUMBER() OVER (Partition By id Order By updated_at desc) as rn from sourceDf) t1 where rn = 1"
+      )
+      .drop("rn")
     dedupedDf.createOrReplaceTempView("dedupedDf")
 
     val dfWithIstCol = dedupedDf.sparkSession.sql("""select *,
@@ -82,7 +90,7 @@ object InstamartTransformation {
     val deltaTable = DeltaTable.forPath(targetPath)
     deltaTable
       .as("t")
-      .merge(dropDuplicatesDf.as("s"),s"s.$primaryKey = t.$primaryKey")
+      .merge(dropDuplicatesDf.as("s"), s"s.$primaryKey = t.$primaryKey")
       .whenMatched()
       .updateAll()
       .whenNotMatched()

@@ -4,27 +4,25 @@ import org.apache.spark.sql.SparkSession
 
 import java.time.format.DateTimeFormatter
 import java.time.{Clock, LocalDateTime}
+import java.util.Base64 // for base64
+import java.nio.charset.StandardCharsets // for base64
 import scala.util.Try
 import play.api.libs.json._
 import scala.util.{Failure, Success}
 import org.apache.spark.sql.functions._
 
+/** This is main class
+  * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName swiggy_order_management --tableName swiggy_orders --targetPath s3://cdc-prod-data/anobis_backup/mysql/checkout/swiggy_order_management/swiggy_orders/sync
+  *
+  * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName baseoms --tableName order_job --targetPath s3://cdc-prod-data/anobis_backup/mysql/dashbaseoms/baseoms/instamart/sync/
+  */
 
-/**
- * This is main class
- * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName swiggy_order_management --tableName swiggy_orders --targetPath s3://cdc-prod-data/anobis_backup/mysql/checkout/swiggy_order_management/swiggy_orders/sync
- *
- * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName baseoms --tableName order_job --targetPath s3://cdc-prod-data/anobis_backup/mysql/dashbaseoms/baseoms/instamart/sync/
- */
-
-object SimpleApplication extends App{
+object SimpleApplication extends App {
   val sparkConfigUtil = SparkConfigUtil(args)
 
   val deploymentEnv = sparkConfigUtil.getDeploymentEnvironment.get.get
   val rdsHost = sparkConfigUtil.getRdsHost.get.get
   val portNumber = sparkConfigUtil.getPortNumber.get.get
-  val user = sparkConfigUtil.getUserName.get.get
-  val password = sparkConfigUtil.getPassword.get.get
   val databaseName = sparkConfigUtil.getDatabaseName.get.get
   val tableName = sparkConfigUtil.getTableName.get.get
   val targetPath = sparkConfigUtil.getTargetPath.get.get
@@ -32,41 +30,80 @@ object SimpleApplication extends App{
   var partitionKey = "created_at"
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
-  val fromTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(currentTime.minusMinutes(60))
-  val toTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(currentTime)
+  val fromTime = DateTimeFormatter
+    .ofPattern("yyyy-MM-dd HH:mm:ss")
+    .format(currentTime.minusMinutes(60))
+  val toTime =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(currentTime)
 
-  println("connString -->"+connString)
+  println("connString -->" + connString)
 
-  val spark = if("PRODUCTION".equalsIgnoreCase(deploymentEnv)){
-    SparkSession.builder.appName("Simple Application").config("spark.databricks.delta.schema.autoMerge.enabled", true).getOrCreate()
-  }else{
-    SparkSession.builder.appName("Simple Application").config("spark.databricks.delta.schema.autoMerge.enabled", true).master("local[*]").getOrCreate()
-  }
-
-  if("swiggy_orders".equalsIgnoreCase(tableName)) {
-   partitionKey = "created_on"
-  }
-
-
-  val jdbcDF = spark.read.format("jdbc")
-    .option("url", connString)
-    .option("dbtable", tableName)
-    .option("user", user)
-    .option("password", password)
-    //Use filter by specifying filter in dbtable option
-    .option(s"dbtable", s"(SELECT * FROM ${tableName} WHERE ${partitionKey} >= '${fromTime}' and ${partitionKey} < '${toTime}') as src_db")
-    .option("partitionColumn", s"${partitionKey}")
-    .option("lowerBound", fromTime)
-    .option("upperBound", toTime)
-    .option("numPartitions", "1")
-    .load()
-
-  jdbcDF.show()
-
-  if("swiggy_orders".equalsIgnoreCase(tableName)) {
-    import org.apache.spark.sql.streaming.{OutputMode, Trigger}
-    FoodTransformation.process(jdbcDF, 0)(spark)
+  val spark = if ("PRODUCTION".equalsIgnoreCase(deploymentEnv)) {
+    SparkSession.builder
+      .appName("Simple Application")
+      .config("spark.databricks.delta.schema.autoMerge.enabled", true)
+      .getOrCreate()
   } else {
-    InstamartTransformation.process(jdbcDF, 0)(spark)
+    SparkSession.builder
+      .appName("Simple Application")
+      .config("spark.databricks.delta.schema.autoMerge.enabled", true)
+      .master("local[*]")
+      .getOrCreate()
+  }
+
+  val uname_f = new String(
+    Base64.getDecoder().decode(spark.conf.get("spark.jdbc.uname_f")),
+    StandardCharsets.UTF_8
+  )
+  val ukey_f = new String(
+    Base64.getDecoder().decode(spark.conf.get("spark.jdbc.ukey_f")),
+    StandardCharsets.UTF_8
+  )
+  val uname_i = new String(
+    Base64.getDecoder().decode(spark.conf.get("spark.jdbc.uname_i")),
+    StandardCharsets.UTF_8
+  )
+  val ukey_i = new String(
+    Base64.getDecoder().decode(spark.conf.get("spark.jdbc.ukey_i")),
+    StandardCharsets.UTF_8
+  )
+
+  if ("swiggy_orders".equalsIgnoreCase(tableName)) {
+    partitionKey = "created_on"
+    val jdbcFoodDF = spark.read
+      .format("jdbc")
+      .option("url", connString)
+      .option("driver", "com.mysql.jdbc.Driver")
+      .option("dbtable", tableName)
+      .option("user", uname_f)
+      .option("password", ukey_f)
+      .option(
+        s"dbtable",
+        s"(SELECT * FROM ${tableName} WHERE ${partitionKey} >= '${fromTime}' and ${partitionKey} < '${toTime}') as src_db"
+      )
+      .option("partitionColumn", s"${partitionKey}")
+      .option("lowerBound", fromTime)
+      .option("upperBound", toTime)
+      .option("numPartitions", "1")
+      .load()
+    FoodTransformation.process(jdbcFoodDF, 0)(spark)
+  } else {
+    val jdbcInstamartDF = spark.read
+      .format("jdbc")
+      .option("url", connString)
+      .option("driver", "com.mysql.jdbc.Driver")
+      .option("dbtable", tableName)
+      .option("user", uname_i)
+      .option("password", ukey_i)
+      .option(
+        s"dbtable",
+        s"(SELECT * FROM ${tableName} WHERE ${partitionKey} >= '${fromTime}' and ${partitionKey} < '${toTime}') as src_db"
+      )
+      .option("partitionColumn", s"${partitionKey}")
+      .option("lowerBound", fromTime)
+      .option("upperBound", toTime)
+      .option("numPartitions", "1")
+      .load()
+    InstamartTransformation.process(jdbcInstamartDF, 0)(spark)
   }
 }
