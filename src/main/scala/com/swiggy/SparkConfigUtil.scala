@@ -2,7 +2,8 @@ package com.swiggy
 
 import org.rogach.scallop.{ScallopConf, _}
 
-case class SparkConfigUtil(override val args: Seq[String])  extends ScallopConf(args) {
+case class SparkConfigUtil(override val args: Seq[String])
+    extends ScallopConf(args) {
 
   private val deploymentEnvironment: ScallopOption[String] =
     opt[String]("deploymentEnvironment")
@@ -16,6 +17,10 @@ case class SparkConfigUtil(override val args: Seq[String])  extends ScallopConf(
     opt[String]("tableName")
   private val targetPath: ScallopOption[String] =
     opt[String]("targetPath")
+  private val duration: ScallopOption[Int] =
+    opt[Int]("duration")
+  private val numPartitions: ScallopOption[String] =
+    opt[String]("numPartitions")
 
   verify()
 
@@ -25,4 +30,6 @@ case class SparkConfigUtil(override val args: Seq[String])  extends ScallopConf(
   def getDatabaseName = databaseName
   def getTableName = tableName
   def getTargetPath = targetPath
+  def getDuration = duration
+  def getNumPartitions = numPartitions
 }

@@ -22,6 +22,7 @@ object FoodTransformation {
     dedupedDf.createOrReplaceTempView("dedupedDf")
 
     val transformedDf = dedupedDf.sparkSession.sql("""select * ,
+                                                  to_date(created_on, "yyyy-MM-dd") as dt,
                                                   from_utc_timestamp(updated_on, 'Asia/Kolkata') as updated_on_ist,
                                                   from_utc_timestamp(created_on, 'Asia/Kolkata') as created_on_ist,
                                                   unix_timestamp(from_utc_timestamp(updated_on, 'Asia/Kolkata'))*1000 as updated_on_ist_epoch,
@@ -40,8 +41,6 @@ object FoodTransformation {
                                                   from dedupedDf""")
 
     transformedDf.createOrReplaceTempView("transformedDf")
-
-    transformedDf.show()
 
     // @TODO Add code to handle user wants to use output table sync or not [Optional] Param 6
     // This Merge logic checks in delta table if there is already an existing record with the transformed df then update it ,

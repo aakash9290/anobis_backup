@@ -28,11 +28,14 @@ object SimpleApplication extends App {
   val targetPath = sparkConfigUtil.getTargetPath.get.get
 
   var partitionKey = "created_at"
+  var numPartitions = sparkConfigUtil.getNumPartitions.get.getOrElse("1")
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
+
+  val duration = sparkConfigUtil.getDuration.get.getOrElse(60)
   val fromTime = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm:ss")
-    .format(currentTime.minusMinutes(60))
+    .format(currentTime.minusMinutes(duration))
   val toTime =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(currentTime)
 
@@ -50,6 +53,8 @@ object SimpleApplication extends App {
       .master("local[*]")
       .getOrCreate()
   }
+
+  spark.sparkContext.setLogLevel("ERROR")
 
   val uname_f = new String(
     Base64.getDecoder().decode(spark.conf.get("spark.jdbc.uname_f")),
@@ -84,7 +89,7 @@ object SimpleApplication extends App {
       .option("partitionColumn", s"${partitionKey}")
       .option("lowerBound", fromTime)
       .option("upperBound", toTime)
-      .option("numPartitions", "1")
+      .option("numPartitions", numPartitions)
       .load()
     FoodTransformation.process(jdbcFoodDF, 0)(spark)
   } else {
@@ -102,7 +107,7 @@ object SimpleApplication extends App {
       .option("partitionColumn", s"${partitionKey}")
       .option("lowerBound", fromTime)
       .option("upperBound", toTime)
-      .option("numPartitions", "1")
+      .option("numPartitions", numPartitions)
       .load()
     InstamartTransformation.process(jdbcInstamartDF, 0)(spark)
   }

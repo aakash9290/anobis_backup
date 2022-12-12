@@ -62,6 +62,7 @@ object InstamartTransformation {
     dedupedDf.createOrReplaceTempView("dedupedDf")
 
     val dfWithIstCol = dedupedDf.sparkSession.sql("""select *,
+                                                    to_date(created_at, "yyyy-MM-dd") as dt,
                                                     from_utc_timestamp(updated_at, 'Asia/Kolkata') as updated_at_ist,
                                                     from_utc_timestamp(created_at, 'Asia/Kolkata') as created_at_ist,
                                                     unix_timestamp(from_utc_timestamp(updated_at, 'Asia/Kolkata'))*1000 as updated_at_ist_epoch,
@@ -84,8 +85,6 @@ object InstamartTransformation {
     val targetPath = sparkConfigUtil.getTargetPath.get.get
 
     val dropDuplicatesDf = dfWithIstCol.dropDuplicates(s"$primaryKey")
-
-    dropDuplicatesDf.show()
 
     val deltaTable = DeltaTable.forPath(targetPath)
     deltaTable
