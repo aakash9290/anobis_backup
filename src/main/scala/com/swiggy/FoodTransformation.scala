@@ -1,13 +1,12 @@
 package com.swiggy
 
-import com.swiggy.SimpleApplication.sparkConfigUtil
 import io.delta.tables.DeltaTable
 import org.apache.spark.sql._
 
 object FoodTransformation {
 
   def process(sourceDf: DataFrame, id: Long)(implicit
-      spark: SparkSession
+      spark: SparkSession, targetPath: String
   ): Unit = {
 
     // We may get multiple entries for any ID so below code would give us latest entry
@@ -48,7 +47,6 @@ object FoodTransformation {
     // This provides us exactly once guarantee
     // source primaryKey which will be used get the latest records using group by
     val primaryKey = "id"
-    val targetPath = sparkConfigUtil.getTargetPath.get.get
 
     val deltaTable = DeltaTable.forPath(targetPath)
 

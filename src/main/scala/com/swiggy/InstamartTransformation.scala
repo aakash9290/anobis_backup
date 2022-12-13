@@ -1,6 +1,5 @@
 package com.swiggy
 
-import com.swiggy.SimpleApplication.{spark, sparkConfigUtil}
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import play.api.libs.json.{JsDefined, JsUndefined, Json}
@@ -12,7 +11,7 @@ import scala.util.{Failure, Success, Try}
 object InstamartTransformation {
 
   def process(sourceDf: DataFrame, id: Long)(implicit
-      spark: SparkSession
+      spark: SparkSession, targetPath: String
   ): Unit = {
 
     def getGmvTotal(event: String) = {
@@ -82,7 +81,6 @@ object InstamartTransformation {
     dfWithIstCol.createOrReplaceTempView("dfWithIstCol")
 
     val primaryKey = "id"
-    val targetPath = sparkConfigUtil.getTargetPath.get.get
 
     val dropDuplicatesDf = dfWithIstCol.dropDuplicates(s"$primaryKey")
 

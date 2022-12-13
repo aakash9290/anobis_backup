@@ -12,27 +12,27 @@ import scala.util.{Failure, Success}
 import org.apache.spark.sql.functions._
 
 /** This is main class
-  * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName swiggy_order_management --tableName swiggy_orders --targetPath s3://cdc-prod-data/anobis_backup/mysql/checkout/swiggy_order_management/swiggy_orders/sync
+  * Arguments Local localhost 3306 swiggy_order_management swiggy_orders s3://cdc-prod-data/anobis_backup/mysql/checkout/swiggy_order_management/swiggy_orders/sync
   *
-  * Arguments --deploymentEnvironment Local --rdsHost localhost --portNumber 3306 --userName root --password root --databaseName baseoms --tableName order_job --targetPath s3://cdc-prod-data/anobis_backup/mysql/dashbaseoms/baseoms/instamart/sync/
+  * Arguments Local localhost 3306 baseoms order_job s3://cdc-prod-data/anobis_backup/mysql/dashbaseoms/baseoms/instamart/sync/
   */
 
 object SimpleApplication extends App {
-  val sparkConfigUtil = SparkConfigUtil(args)
+  for(arg <- args){println(arg)}
+  println(args.size)
 
-  val deploymentEnv = sparkConfigUtil.getDeploymentEnvironment.get.get
-  val rdsHost = sparkConfigUtil.getRdsHost.get.get
-  val portNumber = sparkConfigUtil.getPortNumber.get.get
-  val databaseName = sparkConfigUtil.getDatabaseName.get.get
-  val tableName = sparkConfigUtil.getTableName.get.get
-  val targetPath = sparkConfigUtil.getTargetPath.get.get
+  val deploymentEnv = args(0)
+  val rdsHost = args(1)
+  val portNumber = args(2)
+  val databaseName = args(3)
+  val tableName = args(4)
+  val targetPath = args(5)
+  val duration = if(args.length>=7){args(6).toLong}else{60}
 
   var partitionKey = "created_at"
-  var numPartitions = sparkConfigUtil.getNumPartitions.get.getOrElse("1")
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
 
-  val duration = sparkConfigUtil.getDuration.get.getOrElse(60)
   val fromTime = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm:ss")
     .format(currentTime.minusMinutes(duration))
@@ -89,9 +89,9 @@ object SimpleApplication extends App {
       .option("partitionColumn", s"${partitionKey}")
       .option("lowerBound", fromTime)
       .option("upperBound", toTime)
-      .option("numPartitions", numPartitions)
+      .option("numPartitions", "1")
       .load()
-    FoodTransformation.process(jdbcFoodDF, 0)(spark)
+    FoodTransformation.process(jdbcFoodDF, 0)(spark, targetPath)
   } else {
     val jdbcInstamartDF = spark.read
       .format("jdbc")
@@ -107,8 +107,8 @@ object SimpleApplication extends App {
       .option("partitionColumn", s"${partitionKey}")
       .option("lowerBound", fromTime)
       .option("upperBound", toTime)
-      .option("numPartitions", numPartitions)
+      .option("numPartitions", "1")
       .load()
-    InstamartTransformation.process(jdbcInstamartDF, 0)(spark)
+    InstamartTransformation.process(jdbcInstamartDF, 0)(spark, targetPath)
   }
 }
