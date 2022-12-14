@@ -3,11 +3,12 @@ package com.swiggy
 import org.apache.spark.sql.SparkSession
 
 import java.time.format.DateTimeFormatter
-import java.time.{Clock, LocalDateTime}
-import java.util.Base64 // for base64
-import java.nio.charset.StandardCharsets // for base64
+import java.time.{Clock, LocalDateTime, ZoneId}
+import java.util.Base64
+import java.nio.charset.StandardCharsets
 import scala.util.Try
 import play.api.libs.json._
+
 import scala.util.{Failure, Success}
 import org.apache.spark.sql.functions._
 
@@ -27,17 +28,12 @@ object SimpleApplication extends App {
   val tableName = sparkConfigUtil.getTableName.get.get
   val targetPath = sparkConfigUtil.getTargetPath.get.get
 
-  var partitionKey = "created_at"
+
   val numPartitions = sparkConfigUtil.getNumPartitions.get.getOrElse("1")
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
 
   val duration = sparkConfigUtil.getDuration.get.getOrElse(60)
-  val fromTime = DateTimeFormatter
-    .ofPattern("yyyy-MM-dd HH:mm:ss")
-    .format(currentTime.minusMinutes(duration))
-  val toTime =
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(currentTime)
 
   println("connString -->" + connString)
 
@@ -74,7 +70,12 @@ object SimpleApplication extends App {
   )
 
   if ("swiggy_orders".equalsIgnoreCase(tableName)) {
-    partitionKey = "created_on"
+    val partitionKey = "created_on"
+    val fromTime = LocalDateTime.now(ZoneId.of("Asia/Kolkata")).minusMinutes(duration)
+      .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    val toTime =
+      LocalDateTime.now(ZoneId.of("Asia/Kolkata")).
+        format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
     val jdbcFoodDF = spark.read
       .format("jdbc")
       .option("url", connString)
@@ -93,6 +94,13 @@ object SimpleApplication extends App {
       .load()
     FoodTransformation.process(jdbcFoodDF, 0)(spark)
   } else {
+    val partitionKey = "created_at"
+    val fromTime = LocalDateTime.now(ZoneId.of("UTC")).minusMinutes(duration)
+      .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+    val toTime =
+      LocalDateTime.now(ZoneId.of("UTC"))
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
     val jdbcInstamartDF = spark.read
       .format("jdbc")
       .option("url", connString)
