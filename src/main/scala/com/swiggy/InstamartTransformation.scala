@@ -89,7 +89,8 @@ object InstamartTransformation {
     val deltaTable = DeltaTable.forPath(targetPath)
     deltaTable
       .as("t")
-      .merge(dropDuplicatesDf.as("s"), s"s.$primaryKey = t.$primaryKey")
+      .merge(dropDuplicatesDf.as("s"),
+        s"s.$primaryKey = t.$primaryKey and t.dt >= current_date() - 3")
       .whenMatched()
       .updateAll()
       .whenNotMatched()

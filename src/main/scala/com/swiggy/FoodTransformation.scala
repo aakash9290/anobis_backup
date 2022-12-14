@@ -54,7 +54,8 @@ object FoodTransformation {
 
     deltaTable
       .as("t")
-      .merge(transformedDf.as("s"), s"s.$primaryKey = t.$primaryKey")
+      .merge(transformedDf.as("s"),
+        s"s.$primaryKey = t.$primaryKey and t.dt >= current_date() - 3")
       .whenMatched()
       .updateAll()
       .whenNotMatched()

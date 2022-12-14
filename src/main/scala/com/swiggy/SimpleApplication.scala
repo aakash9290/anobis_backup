@@ -28,7 +28,7 @@ object SimpleApplication extends App {
   val targetPath = sparkConfigUtil.getTargetPath.get.get
 
   var partitionKey = "created_at"
-  var numPartitions = sparkConfigUtil.getNumPartitions.get.getOrElse("1")
+  val numPartitions = sparkConfigUtil.getNumPartitions.get.getOrElse("1")
   val connString = s"jdbc:mysql://${rdsHost}:${portNumber}/${databaseName}"
   val currentTime: LocalDateTime = LocalDateTime.now(Clock.systemUTC())
 
