@@ -22,15 +22,17 @@ object FoodTransformation {
 
     dedupedDf.createOrReplaceTempView("dedupedDf")
 
+
+    //to_utc_timestamp(created_on, 'Asia/Kolkata')
     val transformedDf = dedupedDf.sparkSession.sql("""select * ,
-                                                  to_date(created_on, "yyyy-MM-dd") as dt,
-                                                  from_utc_timestamp(updated_on, 'Asia/Kolkata') as updated_on_ist,
-                                                  from_utc_timestamp(created_on, 'Asia/Kolkata') as created_on_ist,
-                                                  unix_timestamp(from_utc_timestamp(updated_on, 'Asia/Kolkata'))*1000 as updated_on_ist_epoch,
-                                                  case when extract(hour from from_utc_timestamp(created_on, 'Asia/Kolkata'))  in (6,7,8,9,10) then 'Breakfast'
-                                                  when extract(hour from from_utc_timestamp(created_on, 'Asia/Kolkata'))  in (11,12,13,14,15) then 'Lunch'
-                                                  when extract(hour from from_utc_timestamp(created_on, 'Asia/Kolkata'))  in (16,17,18) then 'Snack'
-                                                  when extract(hour from from_utc_timestamp(created_on, 'Asia/Kolkata'))  in (19,20,21,22) then 'Dinner'
+                                                  to_date(to_utc_timestamp(created_on, 'Asia/Kolkata'), "yyyy-MM-dd") as dt,
+                                                  updated_on as updated_on_ist,
+                                                  created_on as created_on_ist,
+                                                  unix_timestamp(updated_on)*1000 as updated_on_ist_epoch,
+                                                  case when extract(hour from created_on)  in (6,7,8,9,10) then 'Breakfast'
+                                                  when extract(hour from created_on)  in (11,12,13,14,15) then 'Lunch'
+                                                  when extract(hour from created_on)  in (16,17,18) then 'Snack'
+                                                  when extract(hour from created_on)  in (19,20,21,22) then 'Dinner'
                                                   else 'Late Night Dinner'
                                                   end as time_slot,
                                                   get_json_object(order_details, '$.areaDetails.name') as area,
@@ -55,7 +57,8 @@ object FoodTransformation {
 
     deltaTable
       .as("t")
-      .merge(transformedDf.as("s"), s"s.$primaryKey = t.$primaryKey")
+      .merge(transformedDf.as("s"),
+        s"s.$primaryKey = t.$primaryKey and t.dt >= current_date() - 3")
       .whenMatched()
       .updateAll()
       .whenNotMatched()
