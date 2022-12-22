@@ -1,7 +1,7 @@
 package com.swiggy
 
 import com.swiggy.SimpleApplication.{spark, sparkConfigUtil}
-import org.apache.spark.sql.functions.udf
+import org.apache.spark.sql.functions.{lit, udf}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import play.api.libs.json.{JsDefined, JsUndefined, Json}
 import io.delta.tables.DeltaTable
@@ -77,7 +77,7 @@ object InstamartTransformation {
                                                     get_json_object(metadata, '$.storeInfo.areaId') as zone,
                                                     gmvUdf(get_json_object(metadata, '$.bill.billedItems')) as gmv,
                                                     unix_timestamp() as  processing_time
-                                                    from dedupedDf """)
+                                                    from dedupedDf """).withColumn("metadata", lit(null))
 
     dfWithIstCol.createOrReplaceTempView("dfWithIstCol")
 
