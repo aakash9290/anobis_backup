@@ -3,6 +3,7 @@ package com.swiggy
 import com.swiggy.SimpleApplication.sparkConfigUtil
 import io.delta.tables.DeltaTable
 import org.apache.spark.sql._
+import org.apache.spark.sql.functions.lit
 
 object FoodTransformation {
 
@@ -38,7 +39,7 @@ object FoodTransformation {
                                                   get_json_object(order_details, '$.additionalInfo.cancellationMeta.cancelOrderRequest.responsible_id') as canceled_reason,
                                                   get_json_object(order_details, '$.orderType') as order_type,
                                                   unix_timestamp()* 1000 as processing_time
-                                                  from dedupedDf""")
+                                                  from dedupedDf""").withColumn("order_details", lit(null))
 
     transformedDf.createOrReplaceTempView("transformedDf")
 
